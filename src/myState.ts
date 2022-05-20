@@ -1,7 +1,7 @@
 import { useMemo, useReducer, useRef, useState } from "react"
-function createStore() {
+// function createStore() {
 
-}
+// }
 
 class BaseState<T extends object> {
   private _data: T
@@ -54,38 +54,48 @@ class BaseState<T extends object> {
     // this._updater()
   }
   #binds
-  $createFormBinds<R extends (data: T) => any>(selector: R) {
-    if (this.#binds) {
-      Object.values(this.#binds).forEach((item:any) => {
-        item.input.value = this._data[item.key]
+  $createFormBinds<R extends (data: T) => any>(selector: R, antdForm?: any) {
+    if (!this.#binds) {
+      const proxy = new Proxy({}, {
+        get(target, key: string) {
+          return key
+        }
+      }) as T
+      const res = selector(proxy)
+      if (res === proxy) {
+        
+      }
+      //TODO:返回自身时。。。
+      this.#binds = res
+      Object.keys(res).forEach(name => {
+        const prop = res[name]
+        let ref
+        let defaultValue = this._data[prop]
+        res[name] = {
+          key:prop,
+          ref:(input) => ref = input,
+          defaultValue,
+          // value: defaultValue,
+          onChange: (e) => {
+            // res[name].value = ref.input.value =
+              this._proxy[prop] = e.target.value
+          } 
+        }
+        Object.defineProperty(res[name], 'input', {
+          get(){ return ref}
+        })
       })
-      return this.#binds
+
+    } else {
+      if (antdForm) {
+        antdForm.setFieldsValue({...this._data})
+      } else {
+        Object.values(this.#binds).forEach((item:any) => {
+          item.input.value = this._data[item.key]
+        })
+      }
     }
-    const proxy = new Proxy({}, {
-      get(target, key: string) {
-        return key
-      }
-    }) as T
-    const res = this.#binds = selector(proxy)
-    //TODO:返回自身时。。。
-    
-    Object.keys(res).forEach(name => {
-      const prop = res[name]
-      let ref
-      let defaultValue = this._data[prop]
-      res[name] = {
-        key:prop,
-        ref:(input) => ref = input,
-        defaultValue,
-        onInput: (e) => {
-          this._proxy[prop] = e.target.value
-        } 
-      }
-      Object.defineProperty(res[name], 'input', {
-        get(){ return ref}
-      })
-    })
-    return res
+    return this.#binds
   }
 }
 function subscriber(data, listener:(key:string)=>void) {
@@ -136,7 +146,7 @@ class Handler {
   }
 }
 function useCreateState<T extends object>(data: T) {
-  const [_, forceUpdate] = useReducer(d=>Symbol(),null)
+  const [_, forceUpdate] = useReducer(d=>Symbol(),Symbol())
   const state = useMemo(() => {
     return new BaseState(data, forceUpdate) as BaseState<T> & T
   }, [])
@@ -154,9 +164,9 @@ function useCreateState<T extends object>(data: T) {
 export {
   useCreateState
 }
-class State {
-  useFormBind(selector?: ()=>any) {
+// class State {
+//   useFormBind(selector?: ()=>any) {
 
-  }
+//   }
 
-}
+// }
